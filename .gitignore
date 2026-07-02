@@ -1,0 +1,64 @@
+# ==============================================================================
+# GRUPO MARIPOSA - B2B-ORDERS-LATAM 
+# Unified .gitignore for b2b-orders-latam (Java, Go, NestJS)
+# ==============================================================================
+
+#------------------------------
+# IDEs
+#------------------------------
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+#------------------------------
+# Java (order-worker)
+#------------------------------
+**/order-worker/target/
+**/order-worker/.gradle/
+**/order-worker/build/
+**/order-worker/.mvn/
+**/order-worker/mvnw
+**/order-worker/mvnw.cmd
+*.class
+*.jar
+*.war
+*.ear
+
+#------------------------------
+# Go (products-api)
+#------------------------------
+**/products-api/products-api
+**/products-api/products-api.exe
+**/products-api/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+#------------------------------
+# NestJS (clients-api)
+#------------------------------
+**/clients-api/node_modules/
+**/clients-api/dist/
+**/clients-api/npm-debug.log*
+**/clients-api/.yarn/
+**/clients-api/.pnpm-debug.log*
+
+#------------------------------
+# Infrastructure
+#------------------------------
+.mongo-data/
+.redis-data/
+*.log
+.env
+.env.local
