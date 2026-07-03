@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -46,17 +47,25 @@ var productsCatalog = map[string]Product{
 }
 
 func main() {
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "8081" // Puerto por defecto
+	}
+
+	if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+
 	http.HandleFunc("/products/", handleGetProduct)
-
-	port := ":8081"
-
-	log.Printf("[PRODUCTS-API] Servidor de Mocks corriendo en el puerto %s", port)
 
 	server := &http.Server{
 		Addr:         port,
 		WriteTimeout: 5 * time.Second,
 		ReadTimeout:  5 * time.Second,
 	}
+
+	log.Printf("[PRODUCTS-API] Servidor de Mocks corriendo en el puerto %s", port)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Error al iniciar el servidor de productos: %v", err)
