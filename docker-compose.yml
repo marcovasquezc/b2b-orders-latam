@@ -1,0 +1,83 @@
+version: '3.8'
+
+networks:
+  mariposa-network:
+    driver: bridge
+
+services:
+  # ==========================================
+  # ZOO KEEPER
+  # ==========================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: b2b-zookeeper
+    networks:
+      - mariposa-network
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # ==========================================
+  # APACHE KAFKA
+  # ==========================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: b2b-kafka
+    networks:
+      - mariposa-network
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # MONGODB
+  # ==========================================
+  mongodb:
+    image: mongo:6.0
+    container_name: b2b-mongodb
+    networks:
+      - mariposa-network
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: b2b_orders_db
+    volumes:
+      - ./.mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # REDIS
+  # ==========================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: b2b-redis
+    networks:
+      - mariposa-network
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./.redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
