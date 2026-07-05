@@ -1,3 +1,49 @@
 spring:
   application:
     name: order-worker
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/b2b_orders}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    consumer:
+      group-id: order-worker-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        orders-topic: orders-topic
+        orders-dlt-topic: orders-dlt
+  cloud:
+    circuitbreaker:
+      resilience4j:
+        enabled: true
+        instances:
+          externalApis:
+            circuitbreaker:
+              slidingWindowSize: 10
+              failureRateThreshold: 50
+              waitDurationInOpenState: 10s
+              permittedNumberOfCallsInHalfOpenState: 3
+            timelimiter:
+              timeoutDuration: 3s
+              cancelRunningFuture: true
+resilience4j:
+  retry:
+    instances:
+      externalApis:
+        maxAttempts: 3
+        waitDuration: 1s
+        exponentialBackoff:
+          enabled: true
+          multiplier: 2
+app:
+  cache:
+    ttl-seconds: ${CACHE_TTL_SECONDS:300}
+  services:
+    products-url: ${PRODUCTS_API_URL:http://localhost:8081}
+    clients-url: ${CLIENTS_API_URL:http://localhost:8082}
