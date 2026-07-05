@@ -35,18 +35,21 @@ public class ProcessOrderService implements ProcessOrderUseCase {
             }
 
             return orderRepository.findById(order.getOrderId())
-                    .flatMap(existingOrder -> {
-                        if ("PROCESSED".equals(existingOrder.getStatus())) {
+                    .map(existingOrder -> "PROCESSED".equals(existingOrder.getStatus()))
+                    .defaultIfEmpty(false)
+                    .flatMap(isProcessed -> {
+                        if (isProcessed) {
                             log.info("Idempotencia detectada para pedido {}. Omitiendo duplicado.", order.getOrderId());
 
                             return Mono.empty();
+                        } else {
+                            return runPipeline(order).then();
                         }
-                        return runPipeline(order);
-                    })
-                    .switchIfEmpty(Mono.defer(() -> runPipeline(order)))
-                    .then();
+                    });
         })
-        .contextWrite(context -> context.put("orderId", order.getOrderId()));
+        .contextWrite(context -> order != null && order.getOrderId() != null
+                ? context.put("orderId", order.getOrderId())
+                : context);
     }
 
     private Mono<Order> runPipeline(Order order) {
