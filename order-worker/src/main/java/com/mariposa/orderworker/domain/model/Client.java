@@ -13,4 +13,5 @@ public class Client {
     private final String segment;
     private final String taxRegime;
     private final String region;
+    private final String channel;
 }
