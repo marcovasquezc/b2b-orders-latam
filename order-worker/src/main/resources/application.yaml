@@ -1,6 +1,9 @@
 spring:
   application:
     name: order-worker
+  threads:
+    virtual:
+      enabled: true
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/b2b_orders}

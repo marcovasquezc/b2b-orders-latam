@@ -8,55 +8,69 @@ import com.mariposa.orderworker.domain.model.Client;
 import com.mariposa.orderworker.domain.model.Item;
 import com.mariposa.orderworker.domain.model.Order;
 import com.mariposa.orderworker.domain.service.OrderDomainService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ProcessOrderService implements ProcessOrderUseCase {
     private final OrderRepositoryPort orderRepository;
     private final ClientPort clientPort;
     private final ProductPort productPort;
+    private final Scheduler virtualThreadScheduler;
     private final OrderDomainService orderDomainService = new OrderDomainService();
+
+    public ProcessOrderService(
+            OrderRepositoryPort orderRepository,
+            ClientPort clientPort,
+            ProductPort productPort,
+            @Qualifier("virtualThreadScheduler") Scheduler virtualThreadScheduler) {
+        this.orderRepository = orderRepository;
+        this.clientPort = clientPort;
+        this.productPort = productPort;
+        this.virtualThreadScheduler = virtualThreadScheduler;
+    }
 
     @Override
     public Mono<Void> execute(Order order) {
         return Mono.defer(() -> {
-            log.info("Procesando pedido ID: {}", order.getOrderId());
+                    log.info("Procesando pedido ID: {}", order.getOrderId());
 
-            if (isOrderInvalid(order)) {
-                return Mono.error(new IllegalArgumentException("Mensaje inválido: Faltan campos obligatorios en la orden."));
-            }
+                    if (isOrderInvalid(order)) {
+                        return Mono.error(new IllegalArgumentException("Mensaje inválido: Faltan campos obligatorios en la orden."));
+                    }
 
-            return orderRepository.findById(order.getOrderId())
-                    .map(existingOrder -> "PROCESSED".equals(existingOrder.getStatus()))
-                    .defaultIfEmpty(false)
-                    .flatMap(isProcessed -> {
-                        if (isProcessed) {
-                            log.info("Idempotencia detectada para pedido {}. Omitiendo duplicado.", order.getOrderId());
+                    return orderRepository.findById(order.getOrderId())
+                            .map(existingOrder -> "PROCESSED".equals(existingOrder.getStatus()))
+                            .defaultIfEmpty(false)
+                            .flatMap(isProcessed -> {
+                                if (isProcessed) {
+                                    log.info("Idempotencia detectada para pedido {}. Omitiendo duplicado.", order.getOrderId());
 
-                            return Mono.empty();
-                        } else {
-                            return runPipeline(order).then();
-                        }
-                    });
-        })
-        .contextWrite(context -> order != null && order.getOrderId() != null
-                ? context.put("orderId", order.getOrderId())
-                : context);
+                                    return Mono.empty();
+                                } else {
+                                    return runPipeline(order).then();
+                                }
+                            });
+                })
+                .contextWrite(context -> order != null && order.getOrderId() != null
+                        ? context.put("orderId", order.getOrderId())
+                        : context);
     }
 
     private Mono<Order> runPipeline(Order order) {
-        Mono<Client> client = clientPort.getClientById(order.getClient().getClientId());
+        Mono<Client> client = clientPort.getClientById(order.getClient().getClientId())
+                .publishOn(virtualThreadScheduler);
 
         Mono<List<Item>> items = Flux.fromIterable(order.getItems())
                 .flatMap(currentItem -> productPort.getProductById(currentItem.getProductId())
+                        .publishOn(virtualThreadScheduler)
                         .map(product -> orderDomainService.calculateTax(
                                 currentItem.getQuantity(),
                                 currentItem.getUnitPrice(),
@@ -69,9 +83,10 @@ public class ProcessOrderService implements ProcessOrderUseCase {
                 .collectList();
 
         return Mono.zip(client, items)
+                .publishOn(virtualThreadScheduler)
                 .map(tuple -> orderDomainService.buildOrder(order.getOrderId(), tuple.getT1(), tuple.getT2()))
                 .flatMap(orderRepository::save)
-                .doOnSuccess(saved -> log.info("Pedido {} guardado en MongoDB con éxito.", saved.getOrderId()));
+                .doOnSuccess(saved -> log.info("Pedido {} guardado en MongoDB con éxito mediante hilos virtuales.", saved.getOrderId()));
     }
 
     private boolean isOrderInvalid(Order order) {

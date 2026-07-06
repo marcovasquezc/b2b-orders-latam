@@ -10,6 +10,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +35,10 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, KafkaOrderInputDto> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, KafkaOrderInputDto> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        SimpleAsyncTaskExecutor loomExecutor = new SimpleAsyncTaskExecutor("kafka-loom-");
+        loomExecutor.setVirtualThreads(true);
+        factory.getContainerProperties().setListenerTaskExecutor(loomExecutor);
+
         return factory;
     }
 }

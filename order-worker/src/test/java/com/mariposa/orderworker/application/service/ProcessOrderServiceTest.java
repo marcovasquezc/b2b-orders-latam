@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.List;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -29,7 +30,6 @@ public class ProcessOrderServiceTest {
     @Mock
     private ProductPort productPort;
 
-    @InjectMocks
     private ProcessOrderService processOrderService;
 
     private Order sampleInputOrder;
@@ -38,6 +38,13 @@ public class ProcessOrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        processOrderService = new ProcessOrderService(
+                orderRepository,
+                clientPort,
+                productPort,
+                Schedulers.immediate()
+        );
+
         sampleClient = Client.builder()
                 .clientId("CLI-002")
                 .name("Comercializadora del Sur E.I.R.L.")
