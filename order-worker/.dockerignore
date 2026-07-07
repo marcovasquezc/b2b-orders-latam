@@ -1,0 +1,16 @@
+target/
+build/
+out/
+.mongo-data/
+.redis-data/
+.testcontainers.properties
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+.mvn/wrapper/maven-wrapper.jar

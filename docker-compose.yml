@@ -32,6 +32,7 @@ services:
       - mariposa-network
     ports:
       - "9092:9092"
+    restart: on-failure
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -113,3 +114,46 @@ services:
       - "8082:8082"
     environment:
       - PORT=8082
+  
+  # ==========================================
+  # ORDER WORKER (JAVA)
+  # ==========================================
+  order-worker:
+    build: ./order-worker      
+    container_name: b2b-order-worker    
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/b2b_orders
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_SERVERS=kafka:29092
+      - PRODUCTS_API_URL=http://products-api:8081
+      - CLIENTS_API_URL=http://clients-api:8082
+      - CACHE_TTL_SECONDS=300
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - mariposa-network
+  
+  # ==========================================
+  # PRODUCER API (NESTJS)
+  # ==========================================
+  producer-api:
+    build: ./producer-api      
+    container_name: b2b-producer-api
+    ports:
+      - "3001:3001"
+    networks:
+      - mariposa-network
+    environment:
+      NODE_ENV: production
+      KAFKA_SERVERS: kafka:29092
+      MONGODB_URI: mongodb://mongodb:27017/b2b_orders
+      PORT: 3001
+    depends_on:
+      - kafka
+      - mongodb

@@ -24,17 +24,19 @@ public class ProcessOrderService implements ProcessOrderUseCase {
     private final ClientPort clientPort;
     private final ProductPort productPort;
     private final Scheduler virtualThreadScheduler;
-    private final OrderDomainService orderDomainService = new OrderDomainService();
+    private final OrderDomainService orderDomainService;
 
     public ProcessOrderService(
             OrderRepositoryPort orderRepository,
             ClientPort clientPort,
             ProductPort productPort,
-            @Qualifier("virtualThreadScheduler") Scheduler virtualThreadScheduler) {
+            @Qualifier("virtualThreadScheduler") Scheduler virtualThreadScheduler,
+            OrderDomainService orderDomainService) {
         this.orderRepository = orderRepository;
         this.clientPort = clientPort;
         this.productPort = productPort;
         this.virtualThreadScheduler = virtualThreadScheduler;
+        this.orderDomainService = orderDomainService;
     }
 
     @Override
@@ -66,7 +68,8 @@ public class ProcessOrderService implements ProcessOrderUseCase {
 
     private Mono<Order> runPipeline(Order order) {
         Mono<Client> client = clientPort.getClientById(order.getClient().getClientId())
-                .publishOn(virtualThreadScheduler);
+                .publishOn(virtualThreadScheduler)
+                .cache();
 
         Mono<List<Item>> items = Flux.fromIterable(order.getItems())
                 .flatMap(currentItem -> productPort.getProductById(currentItem.getProductId())
@@ -80,7 +83,8 @@ public class ProcessOrderService implements ProcessOrderUseCase {
                                 product.getTaxCategory()
                         ))
                 )
-                .collectList();
+                .collectList()
+                .cache();
 
         return Mono.zip(client, items)
                 .publishOn(virtualThreadScheduler)

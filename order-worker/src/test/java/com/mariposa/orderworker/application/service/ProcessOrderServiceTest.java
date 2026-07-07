@@ -4,6 +4,7 @@ import com.mariposa.orderworker.application.ports.outbound.ClientPort;
 import com.mariposa.orderworker.application.ports.outbound.OrderRepositoryPort;
 import com.mariposa.orderworker.application.ports.outbound.ProductPort;
 import com.mariposa.orderworker.domain.model.*;
+import com.mariposa.orderworker.domain.service.OrderDomainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,8 @@ public class ProcessOrderServiceTest {
     @Mock
     private ProductPort productPort;
 
+    private final OrderDomainService orderDomainService = new OrderDomainService();
+
     private ProcessOrderService processOrderService;
 
     private Order sampleInputOrder;
@@ -42,7 +45,8 @@ public class ProcessOrderServiceTest {
                 orderRepository,
                 clientPort,
                 productPort,
-                Schedulers.immediate()
+                Schedulers.immediate(),
+                orderDomainService
         );
 
         sampleClient = Client.builder()

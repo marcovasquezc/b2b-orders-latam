@@ -18,32 +18,62 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.mariposa.orderworker.infrastructure.dto.KafkaOrderInputDto
         spring.json.trusted.packages: "*"
         orders-topic: orders-topic
         orders-dlt-topic: orders-dlt
+    listener:
+      concurrency: 1
   cloud:
     circuitbreaker:
       resilience4j:
         enabled: true
         instances:
-          externalApis:
+          clientsApi:
             circuitbreaker:
               slidingWindowSize: 10
               failureRateThreshold: 50
               waitDurationInOpenState: 10s
               permittedNumberOfCallsInHalfOpenState: 3
             timelimiter:
-              timeoutDuration: 3s
-              cancelRunningFuture: true
+              timeoutDuration: 6s
+          productsApi:
+            circuitbreaker:
+              slidingWindowSize: 10
+              failureRateThreshold: 50
+              waitDurationInOpenState: 10s
+              permittedNumberOfCallsInHalfOpenState: 3
+            timelimiter:
+              timeoutDuration: 6s
+
 resilience4j:
   retry:
     instances:
-      externalApis:
+      clientsApi:
         maxAttempts: 3
         waitDuration: 1s
         exponentialBackoff:
           enabled: true
           multiplier: 2
+        retryExceptions:
+          - java.lang.RuntimeException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+      productsApi:
+        maxAttempts: 3
+        waitDuration: 1s
+        exponentialBackoff:
+          enabled: true
+          multiplier: 2
+        retryExceptions:
+          - java.lang.RuntimeException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+
 app:
   cache:
     ttl-seconds: ${CACHE_TTL_SECONDS:300}
